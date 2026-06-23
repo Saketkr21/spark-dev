@@ -1,24 +1,57 @@
-# `iceberg/` — Lakehouse & table-format correctness (Phase 2)
+# `iceberg/` — Lakehouse & table-format correctness (Phase 2) ✅ complete
 
-> **Signpost — not built yet.** This track is scaffolded so the learning path is visible.
-> Content arrives when Phase 2 is built (after Phase 1 / SPK-1 is reviewed).
+Open-table-format internals (Iceberg / Delta / Parquet) and the **maintenance debt** that bites in
+production. Each module follows **Break → Detect → Fix → Prove** (see
+[`docs/CURRICULUM_BRIEF.md`](../docs/CURRICULUM_BRIEF.md)), reuses the [`common/`](../common/) toolkit
+— including [`common/iceberg_meta.py`](../common/iceberg_meta.py) (`table_health` / `compare_health`,
+the data-file / snapshot / manifest counts that are the "Prove it" here) — and ends with teardown.
 
-Open-table-format internals (Iceberg / Delta / Parquet) and the maintenance debt that bites
-in production. Each module follows **Break → Detect → Fix → Prove** and reuses [`common/`](../common/).
-The existing happy-path notebooks under [`app/notebooks/`](../app/notebooks/) (`01_setup_tables`,
-`03_query_iceberg`) are the seeds of this track and will migrate here.
+> **Laptop-safe:** tiny data, all under `.tmp/`; `make clean` recovers. **Connect-safe:** every
+> notebook uses `spark.sql` + DataFrame APIs only (Iceberg maintenance runs via
+> `CALL iceberg_catalog.system.<proc>(...)`, which works over Spark Connect).
+>
+> **Run any module:** `make up` → `make jupyter` → open its notebook.
 
-## Planned modules — see [`docs/CURRICULUM_PLAN.md`](../docs/CURRICULUM_PLAN.md) (Phase 2)
+## Modules
 
-| ID | Module |
-|----|--------|
-| `LAK-1` | Format comparison (Iceberg vs Delta vs Parquet) |
-| `LAK-2` | Small files & compaction (`rewrite_data_files` / `OPTIMIZE`) |
-| `LAK-3` | Snapshot growth & expiration |
-| `LAK-4` | Orphan files & GC |
-| `LAK-5` | Manifest explosion & rewrite |
-| `LAK-6` | Schema evolution |
-| `LAK-7` | Partition & hidden partitioning + evolution |
-| `LAK-8` | MERGE / upsert: CoW vs MoR |
-| `LAK-9` | Time travel & rollback |
-| `LAK-10` | (Deep) format internals |
+`[ ]` not started · `[~]` in progress · `[x]` built & live-tested (headless `nbconvert`)
+
+| ID | Module | Status |
+|----|--------|--------|
+| `LAK-1` | [Format comparison](format_comparison/) — Iceberg vs Delta vs Parquet (ACID, time travel, schema evo, MERGE) | `[x]` |
+| `LAK-2` | [Small files & compaction](small_files/) — tiny-file litter → `rewrite_data_files` | `[x]` |
+| `LAK-3` | [Snapshot growth & expiration](snapshots/) — unbounded snapshots → `expire_snapshots` | `[x]` |
+| `LAK-4` | [Orphan files & GC](orphan_files/) — unreferenced files → `remove_orphan_files` (24h guard) | `[x]` |
+| `LAK-5` | [Manifest explosion & rewrite](manifests/) — many manifests slow planning → `rewrite_manifests` | `[x]` |
+| `LAK-6` | [Schema evolution](schema_evolution/) — add/rename/drop/widen by field-id vs positional Parquet | `[x]` |
+| `LAK-7` | [Partitioning & hidden partitioning + evolution](partitioning/) — `days()`/`bucket()`, prune, evolve | `[x]` |
+| `LAK-8` | [MERGE: CoW vs MoR](merge_cow_mor/) — 1-row MERGE rewrites a partition vs delete files | `[x]` |
+| `LAK-9` | [Time travel & rollback](time_travel/) — recover a bad write; the expired-snapshot gotcha | `[x]` |
+| `LAK-10` | [Deep format internals](internals/) — metadata pointer, manifest stats, v1/v2 deletes, catalogs | `[x]` |
+
+## Layout
+
+```
+iceberg/
+├── README.md             # this file (Phase 2 track index)
+├── format_comparison/    # LAK-1
+├── small_files/          # LAK-2
+├── snapshots/            # LAK-3
+├── orphan_files/         # LAK-4
+├── manifests/            # LAK-5
+├── schema_evolution/     # LAK-6
+├── partitioning/         # LAK-7
+├── merge_cow_mor/        # LAK-8
+├── time_travel/          # LAK-9
+└── internals/            # LAK-10
+```
+
+Each `iceberg/<topic>/` holds a `README.md` (the Break→Detect→Fix→Prove writeup) and a runnable
+`lak<N>_<topic>.ipynb`. All built and **live-verified** end-to-end against the Spark server.
+
+## Suggested order
+
+`LAK-1` (formats) → `LAK-2` (small files) → `LAK-3` (snapshots) → `LAK-5` (manifests) →
+`LAK-4` (orphans) → `LAK-6` (schema) → `LAK-7` (partitioning) → `LAK-8` (MERGE) →
+`LAK-9` (time travel) → `LAK-10` (internals). The first five are the everyday maintenance jobs;
+the rest are correctness/semantics deep-dives.
