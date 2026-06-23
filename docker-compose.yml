@@ -9,6 +9,14 @@
 #   kafka-ui       — Kafka topic browser (:8080)
 #
 # JupyterLab runs locally on the host:  make jupyter
+#
+# Resource profile (laptop safety): the spark-connect container is memory-capped
+# via SPARK_MEM_LIMIT and its driver heap via SPARK_DRIVER_MEMORY. Flip profiles with:
+#   make up              → tuned       (mem_limit 3g, driver 2g, all cores)
+#   make up-constrained  → constrained (mem_limit 2g, driver 1g, 2 cores) for OOM/spill modules
+# Approx footprint of the rest: kafka ~1.2 GB, kafka-ui ~0.6 GB, history ~0.4 GB.
+# On an 8 GB laptop you can stop optional services (history, kafka-ui) while running
+# the heavier tracks. All generated data stays in .tmp/ (make clean recovers).
 # =============================================================================
 
 services:
@@ -18,6 +26,7 @@ services:
     build: .
     image: spark-dev:latest
     container_name: spark-connect
+    mem_limit: ${SPARK_MEM_LIMIT:-3g}
     ports:
       - "${SPARK_CONNECT_PORT:-15002}:15002"
       - "${SPARK_THRIFT_PORT:-10000}:10000"
@@ -28,6 +37,9 @@ services:
     environment:
       - SPARK_CONF_DIR=/app/conf
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      # Resource profile — flipped by `make up` vs `make up-constrained`.
+      - SPARK_DRIVER_MEMORY=${SPARK_DRIVER_MEMORY:-2g}
+      - SPARK_CORES=${SPARK_CORES:-*}
     command: ["connect"]
     depends_on:
       kafka:

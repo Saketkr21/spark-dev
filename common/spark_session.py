@@ -2,7 +2,7 @@
 Spark session factory for spark-dev notebooks.
 
 Usage in notebooks:
-    from app.utils.spark_session import spark, display_df
+    from common.spark_session import spark, display_df
 
     # spark is ready — Connect, eager eval, sparksql-magic all configured
     spark.sql("SELECT * FROM iceberg_catalog.my_database.orders_iceberg")

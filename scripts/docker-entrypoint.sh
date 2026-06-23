@@ -20,6 +20,7 @@ case "$MODE" in
     echo "  Thrift JDBC : jdbc:hive2://localhost:${SPARK_THRIFT_PORT:-10000}"
     echo "  Connect gRPC: sc://localhost:${SPARK_CONNECT_PORT:-15002}"
     echo "  Spark UI    : http://localhost:4040"
+    echo "  Profile     : driver.memory=${SPARK_DRIVER_MEMORY:-2g}, master=local[${SPARK_CORES:-*}]"
     echo ""
     echo "Both dbt (via Thrift) and notebooks (via Connect) share the same"
     echo "SparkContext — all jobs appear in a single Spark UI."
@@ -27,7 +28,11 @@ case "$MODE" in
     # Start Thrift Server (HiveServer2) as the primary process.
     # Spark Connect is enabled via spark.plugins in spark-defaults.conf,
     # so it starts automatically in the same JVM.
+    # --master and driver.memory come from the resource profile, set by the
+    # SPARK_CORES / SPARK_DRIVER_MEMORY env vars (make up vs make up-constrained).
     $SPARK_HOME/sbin/start-thriftserver.sh \
+      --master "local[${SPARK_CORES:-*}]" \
+      --conf "spark.driver.memory=${SPARK_DRIVER_MEMORY:-2g}" \
       --conf "spark.connect.grpc.binding.port=${SPARK_CONNECT_PORT:-15002}" \
       --conf "spark.hive.server2.thrift.port=${SPARK_THRIFT_PORT:-10000}" 2>&1
 

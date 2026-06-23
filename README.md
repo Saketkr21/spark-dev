@@ -34,6 +34,25 @@ A Docker-based environment for **Apache Spark**, **Iceberg**, **Delta Lake**, **
 
 ---
 
+## Curriculum (production challenges)
+
+This repo doubles as a self-paced **Data Engineering production-challenges curriculum** — break
+real systems at small scale, watch them fail in the Spark UI, fix them, and measure the gain.
+Start with [`docs/CURRICULUM_BRIEF.md`](docs/CURRICULUM_BRIEF.md) and
+[`docs/CURRICULUM_PLAN.md`](docs/CURRICULUM_PLAN.md).
+
+- **Shared toolkit** in `common/`: `datagen` (synthesize skewed/wide data without storing it),
+  `metrics_diff` (before/after metric tables), `profiles` (constrained vs tuned), `spark_session`.
+- **Resource profiles** (laptop-safe): `make up` runs a tuned ~3 GB Spark box; `make up-constrained`
+  runs a ~2 GB box so OOM/spill are real but the host stays usable. Session-level safety nets
+  (AQE, broadcast, shuffle partitions) flip per-notebook via `common.profiles.apply_profile()`.
+- **Tracks**: `spark/` (perf), `iceberg/`, `kafka/`, `debezium/`, `quality/` — each a self-contained
+  module folder. The flagship `SPK-1` (data skew) lives in `spark/skew/`.
+- **Guides**: [`docs/spark-ui-guide.md`](docs/spark-ui-guide.md) (symptom → which UI tab) and
+  [`docs/troubleshooting.md`](docs/troubleshooting.md) (symptom → cause → fix).
+
+---
+
 ## Prerequisites
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
@@ -105,6 +124,7 @@ dbt/
 │   │   └── _staging__models.yml
 │   └── marts/
 │       ├── dim_customers.sql  # Customer dimension (regions, tiers, tenure)
+│       ├── agg_customers.sql  # Aggregated customer metrics
 │       └── _marts__models.yml
 └── macros/
     └── generate_schema_name.sql
@@ -116,6 +136,7 @@ dbt/
 |-------|-------|--------------|-------------|
 | `stg_customers` | staging | view | Cleaned customer data with typed dates and tenure |
 | `dim_customers` | marts | table | Enriched with region, tier rank, tenure segment |
+| `agg_customers` | marts | table | Aggregated customer metrics |
 
 ---
 
@@ -164,9 +185,11 @@ make airflow-up          # Initializes DB and starts all components
 
 ```bash
 make help             # Show all commands
-make up               # Start Docker services
+make up               # Start Docker services — tuned profile (~3 GB Spark)
+make up-constrained   # Start Docker services — constrained profile (~2 GB Spark; OOM/spill modules)
 make down             # Stop Docker services
-make restart          # Restart everything
+make restart          # Restart everything (tuned)
+make restart-constrained # Restart everything (constrained profile)
 make logs             # Tail service logs
 make status           # Show service status
 make jupyter          # Start local JupyterLab
@@ -188,7 +211,7 @@ make clean-all        # Remove data + Docker volumes
 
 | File | Purpose |
 |------|---------|
-| `.env` | Ports, Spark remote URL, Kafka address, dbt connection vars |
+| `.env` | Ports, Spark remote URL, Kafka address, dbt vars, resource-profile vars (`SPARK_MEM_LIMIT` / `SPARK_DRIVER_MEMORY` / `SPARK_CORES`) |
 | `conf/spark-defaults.conf` | Spark server config (catalogs, memory, extensions) |
 | `conf/log4j2.properties` | Logging levels |
 | `dbt/profiles.yml` | dbt connection config (uses env vars from `dbt/.env`) |
@@ -218,14 +241,21 @@ spark-dev/
 │   └── log4j2.properties       # Logging config
 ├── scripts/
 │   └── docker-entrypoint.sh    # Container entrypoint (Thrift+Connect / history)
+├── common/                     # Shared curriculum toolkit
+│   ├── spark_session.py        # Spark session helper (Connect/local)
+│   ├── profiles.py             # constrained vs tuned session profiles
+│   ├── datagen.py              # synthetic data generators (skew knob)
+│   └── metrics_diff.py         # before/after metrics tables
+├── spark/                      # Phase 1: Spark performance pathologies (SPK-1 skew flagship)
+├── iceberg/ kafka/ quality/ debezium/   # Phase 2–5 track signposts (built gradually)
+├── docs/                       # curriculum brief/plan, spark-ui-guide, troubleshooting
 ├── app/
 │   ├── utils/
-│   │   ├── spark_session.py    # Spark session helper (Connect/local)
 │   │   ├── producer.py         # File-based event producer
 │   │   └── sales_producer.py   # Kafka sales event producer
 │   ├── data/
 │   │   └── source/             # Static reference data (CSV)
-│   └── notebooks/              # Jupyter notebooks (01–04)
+│   └── notebooks/              # Jupyter notebooks (01–04; import from common.spark_session)
 ├── airflow/                    # Airflow project (separate uv env)
 │   ├── pyproject.toml          # Airflow + provider dependencies
 │   ├── passwords.json          # Local auth (airflow/airflow, role: admin)

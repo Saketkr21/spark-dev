@@ -1,4 +1,5 @@
-.PHONY: help up down restart logs jupyter jupyter-stop producer sales-producer clean status build \
+.PHONY: help up up-constrained _ports down restart restart-constrained logs jupyter jupyter-stop \
+       producer sales-producer clean clean-all status build \
        dbt-build dbt-debug airflow-up airflow-down airflow-logs airflow-clean
 
 help: ## Show this help
@@ -10,11 +11,22 @@ help: ## Show this help
 build: ## Build Docker images
 	docker compose build
 
-up: ## Start all Docker services (Spark Connect + Kafka + History Server)
+up: ## Start all Docker services — TUNED profile (~3 GB Spark; the default)
 	@mkdir -p .tmp/spark-events .tmp/local_iceberg_warehouse .tmp/local_delta_warehouse logs
 	docker compose up -d
 	@echo ""
-	@echo "Services starting..."
+	@echo "  Spark profile : TUNED  (mem_limit=$${SPARK_MEM_LIMIT:-3g}, driver.memory=$${SPARK_DRIVER_MEMORY:-2g}, all cores)"
+	@$(MAKE) --no-print-directory _ports
+
+up-constrained: ## Start all Docker services — CONSTRAINED profile (~2 GB Spark, 2 cores; for OOM/spill modules)
+	@mkdir -p .tmp/spark-events .tmp/local_iceberg_warehouse .tmp/local_delta_warehouse logs
+	SPARK_MEM_LIMIT=2g SPARK_DRIVER_MEMORY=1g SPARK_CORES=2 docker compose up -d
+	@echo ""
+	@echo "  Spark profile : CONSTRAINED  (mem_limit=2g, driver.memory=1g, cores=2)"
+	@echo "  Use this profile for the OOM / spill modules so failure is real but the host stays usable."
+	@$(MAKE) --no-print-directory _ports
+
+_ports: ## (internal) print service URLs
 	@echo "  Spark Connect : sc://localhost:$${SPARK_CONNECT_PORT:-15002}"
 	@echo "  Spark UI      : http://localhost:$${SPARK_UI_PORT:-4040}"
 	@echo "  History Server: http://localhost:$${SPARK_HISTORY_PORT:-18080}"
@@ -25,7 +37,9 @@ up: ## Start all Docker services (Spark Connect + Kafka + History Server)
 down: ## Stop all Docker services
 	docker compose down
 
-restart: down up ## Restart all services
+restart: down up ## Restart all services (tuned profile)
+
+restart-constrained: down up-constrained ## Restart all services (constrained profile)
 
 logs: ## Tail Docker service logs
 	docker compose logs -f
