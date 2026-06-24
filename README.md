@@ -54,6 +54,8 @@ Start with [`docs/CURRICULUM_BRIEF.md`](docs/CURRICULUM_BRIEF.md) and
   - [`debezium/`](debezium/README.md) — **Phase 4 ✅ complete** · `CDC-1…CDC-9` (logical replication, connector bring-up, snapshot modes, event envelope, WAL/slot growth, deletes & replica identity, Spark→Iceberg MERGE, schema evolution, failure-mode tour)
   - [`quality/`](quality/README.md) — **Phase 5 ✅ complete** · `DBT-1…DBT-10` (materializations, incremental strategies, late-arriving/lookback, SCD2 snapshots, schema-change, testing/layering, quarantine, dbt-expectations + Great Expectations, sources/freshness/contracts/exposures, macros/slim-CI)
   - [`airflow/`](airflow/README.md) — **Phase 6 ✅ complete** · `AF-1…AF-10` (idempotency, execution model, catchup/backfill, retries/SLA, sensor modes, trigger rules/branching, dynamic mapping, XCom limits, assets/data-aware, dbt+Spark e2e)
+  - [`capstone/`](capstone/README.md) — **Phase 7 ✅ complete** · `CAP-1` end-to-end pipeline · `CAP-2` [incident simulator](capstone/incident_simulator/) (8 on-call cards) · `CAP-3` [observability appendix](docs/OBSERVABILITY.md) (optional) · `CAP-4` [learning path](docs/LEARNING_PATH.md)
+- **Start here:** the [**learning path**](docs/LEARNING_PATH.md) orders all 58 modules with time estimates and "what you can diagnose after each."
 - **Guides**: [`docs/spark-ui-guide.md`](docs/spark-ui-guide.md) (symptom → which UI tab) and
   [`docs/troubleshooting.md`](docs/troubleshooting.md) (symptom → cause → fix).
 
@@ -259,6 +261,7 @@ spark-dev/
 ├── kafka/                      # Phase 3 ✅ Kafka & Structured Streaming robustness (KAF-1..6, STR-1..3)
 ├── debezium/                   # Phase 4 ✅ CDC: Postgres→Debezium→Kafka→Spark→Iceberg (CDC-1..9)
 ├── quality/                    # Phase 5 ✅ dbt advanced + data quality (DBT-1..10; dbt-expectations + GE)
+├── capstone/                   # Phase 7 ✅ CAP-1 e2e pipeline + CAP-2 incident simulator (8 cards)
 ├── docs/                       # curriculum brief/plan, spark-ui-guide, troubleshooting
 ├── app/
 │   ├── utils/
