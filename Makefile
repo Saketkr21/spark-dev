@@ -1,5 +1,5 @@
 .PHONY: help up up-constrained _ports down restart restart-constrained logs jupyter jupyter-stop \
-       producer sales-producer clean clean-all status build \
+       producer sales-producer clean clean-all status build cdc-up cdc-down cdc-logs \
        dbt-build dbt-debug airflow-up airflow-down airflow-logs airflow-clean
 
 help: ## Show this help
@@ -40,6 +40,23 @@ down: ## Stop all Docker services
 restart: down up ## Restart all services (tuned profile)
 
 restart-constrained: down up-constrained ## Restart all services (constrained profile)
+
+cdc-up: ## Start the CDC track services (Postgres + Kafka Connect/Debezium) — Phase 4, opt-in
+	@mkdir -p .tmp/spark-events .tmp/local_iceberg_warehouse logs
+	docker compose --env-file .env --env-file conf/profiles/tuned.env --profile cdc up -d
+	@echo ""
+	@echo "  Postgres      : localhost:$${POSTGRES_PORT:-5432}  (user/pass cdc/cdc, db inventory)"
+	@echo "  Kafka Connect : http://localhost:$${CONNECT_PORT:-8083}  (Debezium REST API)"
+	@echo ""
+	@echo "  CDC adds Postgres + Kafka Connect (~1.3 GB). On an 8 GB laptop, stop optional"
+	@echo "  services first:  docker compose stop spark-history kafka-ui"
+
+cdc-down: ## Stop ONLY the CDC services (leaves the base stack running)
+	docker compose stop postgres kafka-connect
+	docker compose rm -f postgres kafka-connect
+
+cdc-logs: ## Tail Kafka Connect logs
+	docker compose logs -f kafka-connect
 
 logs: ## Tail Docker service logs
 	docker compose logs -f
