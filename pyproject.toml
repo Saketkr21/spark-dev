@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "dbt-core==1.11.0",
     "dbt-spark[PyHive]>=1.9.0",
+    "great-expectations>=1.18.0",
     "jupyterlab>=4.5.6",
     "kafka-python>=2.0.2",
     "pandas>=3.0.2",
