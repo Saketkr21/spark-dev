@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "dbt-polyglot"
-version = "0.2.0"
+version = "0.1.0"
 description = "Run any-dialect dbt models on Spark unchanged — transpiles each model's SQL to Spark at dbt compile time via sqlglot."
 readme = "README.md"
 requires-python = ">=3.9"

@@ -26,7 +26,7 @@ interpreter start-up; see [Installation: why pip, not `dbt deps`](#installation-
 pip install dbt-polyglot
 ```
 
-From a git checkout (no PyPI release yet):
+From a git checkout (bleeding edge):
 
 ```bash
 pip install "git+https://github.com/SaketKumar/dbt-polyglot.git"
