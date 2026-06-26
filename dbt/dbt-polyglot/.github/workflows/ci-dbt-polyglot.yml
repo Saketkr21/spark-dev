@@ -1,0 +1,33 @@
+name: ci-dbt-polyglot
+
+# PR test gate for dbt-polyglot. Runs only when a pull request touches the package.
+# Relocated from dbt-polyglot/.github/workflows/ci.yml, which lived in a subdirectory and
+# therefore never ran — GitHub only reads workflows from .github/workflows/ at the repo root.
+
+on:
+  pull_request:
+    paths:
+      - "dbt-polyglot/**"
+      - ".github/workflows/ci-dbt-polyglot.yml"
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: dbt-polyglot
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Unit tests (no Spark required)
+        run: uv run --python ${{ matrix.python-version }} --extra test pytest -q

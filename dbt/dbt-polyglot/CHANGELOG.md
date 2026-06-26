@@ -3,7 +3,19 @@
 All notable changes to `dbt-polyglot` are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses [SemVer](https://semver.org/).
 
-## [0.1.0] — Unreleased
+## [0.1.1] — Unreleased
+
+### Fixed
+- `__version__` now derives from installed package metadata (`importlib.metadata`) rather than a
+  hardcoded literal — a single source of truth (`pyproject.toml`) that can't drift again. (0.1.0
+  shipped reporting `0.2.0`.)
+
+### Changed
+- README reframed around the polyglot model — any `sqlglot` source dialect → any target via
+  `transpile_from` / `transpile_to` — with a new **Targets** section documenting Spark as the
+  first-class, fix-up-backed target and other targets as best-effort. PyPI description updated to match.
+
+## [0.1.0] — 2026-06-26
 
 ### Added
 Initial release.

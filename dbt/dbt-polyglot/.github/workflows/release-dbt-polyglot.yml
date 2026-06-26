@@ -1,0 +1,49 @@
+name: release-dbt-polyglot
+
+# Publishes dbt-polyglot to PyPI — MANUAL trigger only (workflow_dispatch).
+# Run it from the repo's Actions tab → "Run workflow" (or `gh workflow run
+# release-dbt-polyglot.yml`). It checks out the selected branch (default: main) and
+# publishes its current version. Nothing runs automatically on push.
+#
+# Idempotent: `uv publish --check-url` skips any file already on PyPI, so running it without
+# a version bump is a clean no-op rather than a failed duplicate upload.
+#
+# Auth: PyPI Trusted Publishing (OIDC) — no token is stored anywhere. This requires a
+# ONE-TIME setup on PyPI before the first run, otherwise publish fails on auth:
+#   pypi.org → project "dbt-polyglot" → Manage → Publishing → Add a new publisher (GitHub):
+#     Owner:        saketkumar21
+#     Repository:   spark-dev
+#     Workflow:     release-dbt-polyglot.yml
+#     Environment:  (leave blank)
+
+on:
+  workflow_dispatch:        # manual only — Actions tab → "Run workflow" (defaults to main)
+
+permissions:
+  contents: read
+  id-token: write        # required for Trusted Publishing (OIDC)
+
+concurrency:
+  group: release-dbt-polyglot
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dbt-polyglot
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Run unit tests (gate the release)
+        run: uv run --extra test pytest -q
+
+      - name: Build sdist + wheel
+        run: uv build
+
+      - name: Publish to PyPI (skips versions already published)
+        run: uv publish --trusted-publishing always --check-url https://pypi.org/simple/
