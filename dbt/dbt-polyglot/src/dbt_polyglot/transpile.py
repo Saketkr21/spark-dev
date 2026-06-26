@@ -47,7 +47,7 @@ def patch_compiler():
         except Exception as e:
             uid = getattr(node, "unique_id", "<unknown>")
             logger.warning(
-                f"[dbt-polyglot] could not transpile {uid} from '{src}' -> "
+                f"[ dbt-polyglot ] could not transpile {uid} from '{src}' -> "
                 f"'{dst or _DEFAULT_TARGET}' ({type(e).__name__}: {e}); "
                 f"passing model SQL through UNCHANGED."
             )

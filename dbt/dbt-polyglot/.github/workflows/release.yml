@@ -1,8 +1,8 @@
-name: release-dbt-polyglot
+name: release
 
 # Publishes dbt-polyglot to PyPI — MANUAL trigger only (workflow_dispatch).
 # Run it from the repo's Actions tab → "Run workflow" (or `gh workflow run
-# release-dbt-polyglot.yml`). It checks out the selected branch (default: main) and
+# release.yml`). It checks out the selected branch (default: main) and
 # publishes its current version. Nothing runs automatically on push.
 #
 # Idempotent: `uv publish --check-url` skips any file already on PyPI, so running it without
@@ -11,9 +11,9 @@ name: release-dbt-polyglot
 # Auth: PyPI Trusted Publishing (OIDC) — no token is stored anywhere. This requires a
 # ONE-TIME setup on PyPI before the first run, otherwise publish fails on auth:
 #   pypi.org → project "dbt-polyglot" → Manage → Publishing → Add a new publisher (GitHub):
-#     Owner:        saketkumar21
-#     Repository:   spark-dev
-#     Workflow:     release-dbt-polyglot.yml
+#     Owner:        Saketkr21
+#     Repository:   dbt-polyglot
+#     Workflow:     release.yml
 #     Environment:  (leave blank)
 
 on:
@@ -24,15 +24,12 @@ permissions:
   id-token: write        # required for Trusted Publishing (OIDC)
 
 concurrency:
-  group: release-dbt-polyglot
+  group: release
   cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: dbt-polyglot
     steps:
       - uses: actions/checkout@v4
 
