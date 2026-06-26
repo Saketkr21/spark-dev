@@ -1,4 +1,4 @@
-include dbt_spark_transpile.pth
+include dbt_polyglot.pth
 include LICENSE
 include README.md
 include CHANGELOG.md

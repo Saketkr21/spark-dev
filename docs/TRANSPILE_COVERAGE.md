@@ -1,4 +1,4 @@
-# dbt-spark-transpile — coverage, advantages & limitations
+# dbt-polyglot — coverage, advantages & limitations
 
 A trust writeup for the Snowflake/other-dialect → Spark transpile drop-in. Backed by a cross-dialect
 test matrix run against **real Spark 4.0.2** (each source-dialect snippet was transpiled, then validated
@@ -7,8 +7,8 @@ on Spark via a zero-row execution that forces parse + analysis).
 ## TL;DR
 - **Advantage:** the vast majority of analytical SQL across **Snowflake, BigQuery, Databricks, Redshift,
   T-SQL, Postgres, DuckDB** transpiles to valid Spark with **zero model edits** — config only.
-- **Trust:** a model is either **verified-valid Spark** or it **fails loudly** (the `transpile_check`
-  gate names it). It never silently produces wrong-but-running SQL from an un-converted construct.
+- **Trust:** a model is either **verified-valid Spark** or it **fails loudly** (native `dbt build --empty`
+  names it). It never silently produces wrong-but-running SQL from an un-converted construct.
 - **Limitation:** a small tail of genuinely engine-specific constructs (chiefly Snowflake `LATERAL
   FLATTEN` and some semi-structured features) has no faithful Spark form and surfaces as a loud failure.
 - **Caveat:** validity ≠ guaranteed semantic identity. sqlglot is best-effort on semantics (it does
@@ -21,8 +21,8 @@ on Spark via a zero-row execution that forces parse + analysis).
    Snowflake→Spark today and BigQuery/Redshift/T-SQL→Spark tomorrow.
 3. **Broad coverage** (see matrix) — window funcs incl. `QUALIFY`, subquery predicates, conditional/null
    functions, casts, date math, string funcs, aggregates, and even much semi-structured access.
-4. **Verifiable.** `make transpile-check` / `transpile_check.py` certifies, upfront, exactly which models
-   run on Spark — so you trust every green model and see every blocker.
+4. **Verifiable.** `make transpile-check` (native `dbt build --empty`) certifies, upfront, exactly which
+   models run on Spark — so you trust every green model and see every blocker.
 5. **Safe to leave on.** No-op when not opted in or already Spark; fail-soft (never crashes a compile);
    pretty-printed output in `target/compiled/`.
 
@@ -76,14 +76,15 @@ on Spark via a zero-row execution that forces parse + analysis).
    EXPLAIN-verified). It is extensible, not exhaustive on day one.
 
 ## How to know for *your* repo
-Don't trust this matrix blindly — certify your actual models:
+Don't trust this matrix blindly — certify your actual models with native dbt:
 ```bash
-cd your_dbt_project && dbt compile
-dbt-spark-transpile-check          # or: make transpile-check
+cd your_dbt_project
+dbt build --empty                  # or: make transpile-check
 ```
-It lists every model as **verified-valid / DIALECT-blocker (named) / upstream-not-built**, and exits
-non-zero on any blocker (CI gate). Whatever it reports green is proven to parse+analyze on Spark; whatever
-it flags is the finite, named set to handle (rewrite that handful, or add a fix-up transform).
+`--empty` runs every model's transpiled SQL against Spark with zero rows, in DAG order, and **fails
+loudly naming any model** that isn't valid Spark (exits non-zero — a CI gate). Whatever builds green is
+proven to parse+analyze on Spark; whatever it flags is the finite, named set to handle (rewrite that
+handful, or add a fix-up transform). Use `dbt show --limit 0 -s <model>` for a read-only check.
 
 ## Recommendation
 Use it as the **bridge**: turn it on, run the check, and you'll typically find the large majority of

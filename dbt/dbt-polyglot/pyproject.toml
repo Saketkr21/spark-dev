@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dbt-polyglot"
+version = "0.2.0"
+description = "Run any-dialect dbt models on Spark unchanged — transpiles each model's SQL to Spark at dbt compile time via sqlglot."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "SaketKumar" }]
+keywords = ["dbt", "spark", "sqlglot", "snowflake", "sql", "transpile", "dialect", "polyglot"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: SQL",
+    "Topic :: Database",
+    "Topic :: Software Development :: Code Generators",
+]
+dependencies = [
+    "sqlglot>=20.0",
+    "dbt-core>=1.5",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/SaketKumar/dbt-polyglot"
+Repository = "https://github.com/SaketKumar/dbt-polyglot"
+Issues = "https://github.com/SaketKumar/dbt-polyglot/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

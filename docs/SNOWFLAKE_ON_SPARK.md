@@ -47,16 +47,15 @@ Two companions make a whole Snowflake repo work on Spark, also config-only:
 A model is either converted to **verified-valid Spark SQL**, or it **fails loudly** (a clear dbt/Spark
 error naming the model). It never silently produces a wrong result from an un-converted construct.
 
-To certify your repo **upfront**, after `dbt compile` run the check (or `make transpile-check`):
+To certify your repo **upfront**, use dbt's own native zero-data validation (or `make transpile-check`):
 ```bash
-uv run python dbt/dbt-spark-transpile/transpile_check.py
+dbt build --empty                 # build every model with 0 input rows, in DAG order
+dbt show --limit 0 -s my_model    # read-only variant: validate without materializing
 ```
-It `EXPLAIN`/zero-row-validates every compiled model against Spark and reports:
-- **verified valid on Spark** (the bulk),
-- **DIALECT blocker** — a construct sqlglot can't convert (named, with the Spark error class) — the only
-  models needing attention,
-- **upstream not built** — informational (run `dbt build` first), not a dialect issue.
-It exits non-zero on any DIALECT blocker, so it works as a CI gate.
+`--empty` limits every `ref`/`source` to zero rows, so dbt runs each model's real (transpiled) SQL
+against the warehouse — moving no data — and **fails loudly, naming the model**, if it's invalid Spark.
+Because it builds in dependency order there's no "upstream not built" ambiguity, and it exits non-zero
+on the first invalid model — a drop-in CI gate, with no custom tooling and no extra dependency.
 
 ### Safely converted (verified)
 Window functions incl. `QUALIFY`, `x [NOT] IN (subquery)`, `IFF`→`IF`, `NVL`→`COALESCE`, `::`→`CAST`,

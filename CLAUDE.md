@@ -123,8 +123,8 @@ dbt build          # seed + run + test
 - `models/marts/dim_customers` (table) — enriched customer dimension (region, tier, tenure).
 - `models/marts/agg_customers` (table) — aggregated customer metrics. (Phase 5 expands this project.)
 
-### dbt-spark-transpile
-- Local package at `./dbt/dbt-spark-transpile/` (renamed + moved from the old `dbt-spark-qualify/`).
+### dbt-polyglot (formerly dbt-spark-transpile)
+- Local package at `./dbt/dbt-polyglot/` — PyPI-ready src-layout (`src/dbt_polyglot/`).
 - Write a model in another SQL dialect (e.g. Snowflake); it is transpiled to Spark via `sqlglot` at
   **compile phase** — monkeypatches `dbt.compilation.Compiler._compile_code`, so the rewrite happens
   on the model **body before** dbt's materialization wrapper. `target/compiled/` and the executed SQL
@@ -153,10 +153,14 @@ dbt build          # seed + run + test
   `parse(read=src) → apply fix-up transforms → generate(spark)`; the first fix-up rewrites quantified-subquery
   comparisons (`<> ALL`/`= ANY (subq)`) back to `NOT x IN`/`x IN (subq)`. Extensible registry, each
   EXPLAIN-verified. A model is converted to **verified-valid Spark or fails LOUD — never silently wrong**.
-- **Trust check:** `make transpile-check` (or `python dbt/dbt-spark-transpile/transpile_check.py` after
-  `dbt compile`) zero-row-validates every compiled model on Spark and classifies verified-valid /
-  **DIALECT blocker** (named, with Spark error class) / upstream-not-built; exits non-zero on any blocker
-  (CI gate). The full **"run a Snowflake dbt repo on Spark, config-only"** story is `docs/SNOWFLAKE_ON_SPARK.md`.
+- **Trust check — delegated to native dbt, not custom code:** `make transpile-check` runs
+  `dbt build --empty` (build every model with zero input rows, in DAG order, against the
+  `profiles.yml` adapter — moves no data, fails loud naming any model whose transpiled SQL is
+  invalid). `dbt show --limit 0 -s <model>` is the read-only variant. The earlier custom `dbt verify`
+  command + `transpile_check.py` + PyHive connection were **removed (2026-06-26) as a reinvention of
+  what dbt-core 1.8+ already does** (`--empty`); this also dropped the pyhive/pyyaml deps and made
+  validation warehouse-agnostic. The full **"run a Snowflake dbt repo on Spark, config-only"** story is
+  `docs/SNOWFLAKE_ON_SPARK.md`.
 - Installed via `[tool.uv.sources]` in pyproject.toml; the `.pth` is placed into site-packages by a
   `build_py` override in `setup.py` (the `data_files` `.pth` trick lands in the venv root under uv and
   never loads — see the package README). Spark 4.0.2 has no native `QUALIFY` (`[PARSE_SYNTAX_ERROR]`),
@@ -224,7 +228,7 @@ Airflow 3 runs **locally** via `uv` (separate venv in `airflow/`), independent o
 │   ├── models/marts/          dim_customers + agg_customers (tables)
 │   ├── macros/                generate_schema_name override
 │   ├── quality/               Phase 5 ✅ DBT-1..10 writeups + great_expectations/ (GE lab)
-│   └── dbt-spark-transpile/   Local pkg: write Snowflake SQL → transpiled to Spark at dbt compile (.pth)
+│   └── dbt-polyglot/          Local pkg (PyPI: dbt-polyglot): compile-time transpile (.pth, src-layout)
 ├── airflow/                Local Airflow (separate uv venv); dags/ tracked (example_dag.py)
 ├── pyproject.toml          uv-managed, Python >=3.13
 └── .tmp/                   ALL generated data (gitignored)

@@ -107,10 +107,9 @@ dbt-debug: ## Verify dbt connection to Spark Thrift Server
 	@set -a && [ -f .env ] && . ./.env && set +a && \
 	cd dbt && uv run dbt debug --profiles-dir .
 
-transpile-check: ## Certify which compiled models are verified-valid on Spark (Snowflake→Spark drop-in)
-	@set -a && [ -f .env ] && . ./.env && set +a && \
-	cd dbt && uv run dbt compile --profiles-dir . >/dev/null && cd .. && \
-	uv run python dbt/dbt-spark-transpile/transpile_check.py --compiled-dir dbt/target/compiled
+transpile-check: ## Validate every (transpiled) model on Spark with zero data — native dbt build --empty
+	@set -a && [ -f dbt/.env ] && . ./dbt/.env && set +a && \
+	cd dbt && uv run dbt build --empty
 
 # ── Airflow ─────────────────────────────────────────────────────────────────
 

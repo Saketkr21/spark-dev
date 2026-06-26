@@ -1,4 +1,4 @@
-# dbt-spark-transpile
+# dbt-polyglot
 
 **Run a dbt project written in another SQL dialect (Snowflake, BigQuery, Redshift, …) on
 Spark — unchanged.** Each model's SQL is transpiled to Spark with
@@ -23,19 +23,19 @@ Installation auto-activates the patch (via a `.pth` file that imports the module
 interpreter start-up; see [Installation: why pip, not `dbt deps`](#installation-why-pip-not-dbt-deps)).
 
 ```bash
-pip install dbt-spark-transpile
+pip install dbt-polyglot
 ```
 
 From a git checkout (no PyPI release yet):
 
 ```bash
-pip install "git+https://github.com/your-org/dbt-spark-transpile.git"
+pip install "git+https://github.com/SaketKumar/dbt-polyglot.git"
 ```
 
 Local / editable (developing the package):
 
 ```bash
-pip install -e path/to/dbt-spark-transpile
+pip install -e path/to/dbt-polyglot
 ```
 
 You also need a Spark adapter for dbt (this package does not pull one in, so you can choose
@@ -43,13 +43,6 @@ your connection method):
 
 ```bash
 pip install "dbt-spark[PyHive]"     # Thrift/HiveServer2, used in the examples below
-```
-
-To run the optional trust-gate command against a live Spark server, add the `check` extra
-(pulls in the PyHive driver):
-
-```bash
-pip install "dbt-spark-transpile[check]"
 ```
 
 ---
@@ -133,22 +126,22 @@ un-converted construct:
   passes the **original SQL through unchanged**. Spark then either runs it (it was already
   valid) or rejects it loudly — so the failure surfaces, it is never hidden.
 
-To certify a whole repo **upfront**, run the trust gate after `dbt compile`:
+To certify a whole repo **upfront** — before a heavy run — use dbt's own native validation.
+No extra tooling: dbt already runs SQL through your `profiles.yml` adapter, against whatever
+warehouse you target.
 
 ```bash
-dbt-spark-transpile-check                      # console script (needs the [check] extra)
-# or:  python -m transpile_check
-# or:  python -m transpile_check --compiled-dir target/compiled --host localhost --port 10000
+dbt build --empty              # build every model with 0 input rows (DAG-ordered)
+dbt build --empty --select marts.*   # any dbt selector works
+dbt show --limit 0 -s my_model # read-only: validate the SELECT without materializing
 ```
 
-It `EXPLAIN`/zero-row-validates every compiled model against a live Spark server and classifies each:
-
-- **verified valid on Spark** (the bulk),
-- **DIALECT blocker** — a construct `sqlglot` couldn't convert (named, with the Spark error
-  class) — the only models needing attention,
-- **upstream not built** — informational (run `dbt build` first), not a dialect issue.
-
-It exits non-zero on any DIALECT blocker, so it works directly as a CI gate.
+`--empty` limits every `ref`/`source` to zero rows, so dbt executes each model's real SQL
+against the warehouse — moving no data — and **fails loudly, naming the model**, if the
+transpiled SQL is invalid. Because it builds in dependency order, there is no "upstream not
+built" ambiguity. That makes `dbt build --empty` a drop-in CI gate (it exits non-zero on the
+first invalid model). `dbt show --limit 0` is the non-destructive variant when the target
+role can't create objects.
 
 ### Scope
 
@@ -179,7 +172,7 @@ on a true cross-dialect translation, and is semantically required — do not str
 - **`dbt deps`** installs **dbt packages**: bundles of dbt *macros, models, seeds, and
   tests* (the things listed in `packages.yml` / `dependencies.yml`). It pulls SQL/Jinja
   assets into `dbt_packages/` and **never installs or runs Python code**.
-- **`dbt-spark-transpile`** is a **Python package**. It works by monkeypatching a dbt-core
+- **`dbt-polyglot`** is a **Python package**. It works by monkeypatching a dbt-core
   function at runtime, and it activates through a `.pth` file that Python executes on
   interpreter start-up. Both of those are Python-installer concerns — only `pip` (or `uv`,
   `poetry`, etc.) places a `.pth` into `site-packages` and registers the dependency.
@@ -191,19 +184,22 @@ dbt. It does not appear in `packages.yml`.
 
 ## Package contents
 
-A deliberately small, flat package — two top-level modules plus a `.pth`:
+A standard src-layout package — `src/dbt_polyglot/` holds the import package, plus a `.pth`
+that activates it on start-up:
 
 | File | Role |
 |------|------|
-| `dbt_spark_transpile.py` | The compile-phase patch + `SPARK_FIXUPS` registry. |
-| `dbt_spark_transpile.pth` | One line (`import dbt_spark_transpile`); auto-activates the patch on start-up. Installed into `site-packages` by the `build_py` shim in `setup.py`. |
-| `transpile_check.py` | The trust gate (`dbt-spark-transpile-check` console script / `python -m transpile_check`). |
+| `src/dbt_polyglot/__init__.py` | Import-time activation: patches the dbt Compiler. |
+| `src/dbt_polyglot/transpile.py` | The compile-phase patch (`patch_compiler`) + core `spark_safe_transpile`. |
+| `src/dbt_polyglot/fixups.py` | The `SPARK_FIXUPS` registry of AST transforms. |
+| `dbt_polyglot.pth` | One line (`import dbt_polyglot`); auto-activates on start-up. Installed into `site-packages` by the `build_py` shim in `setup.py`. |
 | `pyproject.toml` / `setup.py` | PEP 517 metadata; `setup.py` exists only to place the `.pth` into purelib. |
 | `LICENSE` | Apache-2.0. |
 
-This package is intentionally limited to **transpilation**. Catalog routing (mapping
-`file_format` → a Spark catalog) and seed re-runnability are **separate concerns** and are
-not bundled here.
+This package is intentionally limited to **transpilation**. Validating the result is left to
+dbt's native `dbt build --empty` (see [Trust model](#trust-model--verified-or-fails-loud-never-silently-wrong)
+above); catalog routing (mapping `file_format` → a Spark catalog) and seed re-runnability are
+**separate concerns** and are not bundled here.
 
 ---
 
@@ -217,7 +213,7 @@ not bundled here.
 - **`sqlglot` coverage.** `sqlglot` maps a large surface but not everything. Exotic dialect
   features — Snowflake `LATERAL FLATTEN`, `VARIANT`/`OBJECT`/`ARRAY` semantics, `:` path
   access, `LISTAGG`, and similar — may not translate cleanly. Those surface via the fail-soft
-  WARNING and the trust-gate check, by design, rather than silently.
+  WARNING and `dbt build --empty`, by design, rather than silently.
 - **Self-contained.** The module imports nothing from any host project, so it can be lifted
   into its own repo unchanged.
 
